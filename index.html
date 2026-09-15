@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MyMoney — Expense &amp; Lending Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ============ SIDEBAR / MOBILE NAV ============ -->
+<nav class="sidebar" id="sidebar">
+  <div class="brand">
+    <span class="brand-mark">₹</span>
+    <span class="brand-name">MyMoney</span>
+  </div>
+
+  <ul class="nav-list">
+    <li><button class="nav-item active" data-view="dashboard">Dashboard</button></li>
+    <li><button class="nav-item" data-view="expenses">Expenses</button></li>
+    <li><button class="nav-item" data-view="income">Income</button></li>
+    <li><button class="nav-item" data-view="people">People I've Lent To</button></li>
+    <li><button class="nav-item" data-view="transactions">All Transactions</button></li>
+    <li><button class="nav-item" data-view="settings">Settings</button></li>
+  </ul>
+
+  <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+    <span id="themeIcon">◐</span> <span id="themeLabel">Dark mode</span>
+  </button>
+</nav>
+
+<!-- ============ MAIN CONTENT ============ -->
+<main class="main">
+
+  <!-- ---------- DASHBOARD ---------- -->
+  <section class="view active" id="view-dashboard">
+    <header class="view-header">
+      <h1>Dashboard</h1>
+      <p class="view-sub">Your money, at a glance.</p>
+    </header>
+
+    <div class="hero-card">
+      <span class="hero-label">Current balance</span>
+      <span class="hero-figure" id="statBalance">₹0</span>
+      <div class="hero-line"></div>
+      <div class="hero-footnote">Income minus expenses, adjusted for money out on loan and money recovered.</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card in">
+        <span class="stat-label">Total income</span>
+        <span class="stat-figure" id="statIncome">₹0</span>
+      </div>
+      <div class="stat-card out">
+        <span class="stat-label">Total expenses</span>
+        <span class="stat-figure" id="statExpenses">₹0</span>
+      </div>
+      <div class="stat-card lent">
+        <span class="stat-label">Money lent</span>
+        <span class="stat-figure" id="statLent">₹0</span>
+      </div>
+      <div class="stat-card received">
+        <span class="stat-label">Received back</span>
+        <span class="stat-figure" id="statReceived">₹0</span>
+      </div>
+      <div class="stat-card owed">
+        <span class="stat-label">People owe me</span>
+        <span class="stat-figure" id="statOwed">₹0</span>
+      </div>
+      <div class="stat-card pending">
+        <span class="stat-label">Pending debts</span>
+        <span class="stat-figure" id="statPendingCount">0</span>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Monthly expenses</h3>
+        <canvas id="chartMonthlyExpenses" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Expenses by category</h3>
+        <canvas id="chartCategory" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Lent vs recovered</h3>
+        <canvas id="chartLentVsRecovered" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Income vs expenses</h3>
+        <canvas id="chartIncomeVsExpenses" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="recent-block">
+      <h3>Recent activity</h3>
+      <ul class="ledger-list" id="recentActivityList"></ul>
+    </div>
+  </section>
+
+  <!-- ---------- EXPENSES ---------- -->
+  <section class="view" id="view-expenses">
+    <header class="view-header">
+      <h1>Expenses</h1>
+      <p class="view-sub">Everything that left your pocket.</p>
+      <button class="btn-primary" id="openAddExpense">+ Add expense</button>
+    </header>
+
+    <div class="toolbar">
+      <input type="search" id="expenseSearch" placeholder="Search description or category…" />
+      <select id="expenseCategoryFilter">
+        <option value="">All categories</option>
+        <option>Food</option><option>Travel</option><option>Shopping</option>
+        <option>College</option><option>Entertainment</option><option>Bills</option>
+        <option>Health</option><option>Other</option>
+      </select>
+      <input type="month" id="expenseMonthFilter" />
+      <select id="expenseSort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </div>
+
+    <div class="category-summary" id="categorySummary"></div>
+
+    <table class="data-table" id="expenseTable">
+      <thead>
+        <tr><th>Date</th><th>Category</th><th>Description</th><th>Method</th><th class="num">Amount</th><th></th></tr>
+      </thead>
+      <tbody id="expenseTableBody"></tbody>
+    </table>
+    <p class="empty-state" id="expenseEmptyState" hidden>No expenses match these filters yet.</p>
+  </section>
+
+  <!-- ---------- INCOME ---------- -->
+  <section class="view" id="view-income">
+    <header class="view-header">
+      <h1>Income</h1>
+      <p class="view-sub">Everything that came in.</p>
+      <button class="btn-primary" id="openAddIncome">+ Add income</button>
+    </header>
+
+    <table class="data-table" id="incomeTable">
+      <thead>
+        <tr><th>Date</th><th>Source</th><th>Notes</th><th class="num">Amount</th><th></th></tr>
+      </thead>
+      <tbody id="incomeTableBody"></tbody>
+    </table>
+    <p class="empty-state" id="incomeEmptyState" hidden>No income recorded yet.</p>
+  </section>
+
+  <!-- ---------- PEOPLE / DEBTS ---------- -->
+  <section class="view" id="view-people">
+    <header class="view-header">
+      <h1>People I've Lent To</h1>
+      <p class="view-sub">Track who owes you, and how much.</p>
+      <button class="btn-primary" id="openAddDebt">+ Record money lent</button>
+    </header>
+
+    <div class="people-grid" id="peopleGrid"></div>
+    <p class="empty-state" id="peopleEmptyState" hidden>No money lent yet — nice and simple.</p>
+  </section>
+
+  <!-- ---------- PERSON DETAIL (sub-view) ---------- -->
+  <section class="view" id="view-person-detail">
+    <header class="view-header">
+      <button class="btn-back" id="backToPeople">← Back to people</button>
+      <h1 id="personDetailName">Person</h1>
+      <p class="view-sub" id="personDetailSummary"></p>
+    </header>
+    <div class="person-loans" id="personLoansList"></div>
+  </section>
+
+  <!-- ---------- TRANSACTIONS ---------- -->
+  <section class="view" id="view-transactions">
+    <header class="view-header">
+      <h1>All Transactions</h1>
+      <p class="view-sub">Income, expenses, loans and repayments in one ledger.</p>
+    </header>
+
+    <div class="toolbar">
+      <input type="search" id="txSearch" placeholder="Search transactions…" />
+      <select id="txTypeFilter">
+        <option value="">All types</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+        <option value="lent">Money lent</option>
+        <option value="repayment">Repayment</option>
+      </select>
+      <input type="month" id="txMonthFilter" />
+    </div>
+
+    <ul class="ledger-list" id="txList"></ul>
+    <p class="empty-state" id="txEmptyState" hidden>Nothing here yet.</p>
+  </section>
+
+  <!-- ---------- SETTINGS ---------- -->
+  <section class="view" id="view-settings">
+    <header class="view-header">
+      <h1>Settings</h1>
+      <p class="view-sub">Backups, data, and starting fresh.</p>
+    </header>
+
+    <div class="settings-block">
+      <div class="settings-row">
+        <div>
+          <h3>Export your data</h3>
+          <p>Download everything as a JSON file — keep it somewhere safe.</p>
+        </div>
+        <button class="btn-secondary" id="exportBtn">Export JSON</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <h3>Import data</h3>
+          <p>Restore from a previously exported JSON file. This replaces current data.</p>
+        </div>
+        <label class="btn-secondary file-btn">
+          Import JSON
+          <input type="file" id="importInput" accept="application/json" hidden />
+        </label>
+      </div>
+      <div class="settings-row danger">
+        <div>
+          <h3>Clear all data</h3>
+          <p>Permanently deletes every expense, income entry, and loan. Cannot be undone.</p>
+        </div>
+        <button class="btn-danger" id="clearDataBtn">Clear everything</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ MODAL: ADD/EDIT EXPENSE ============ -->
+<dialog class="modal" id="expenseModal">
+  <form id="expenseForm" class="modal-form">
+    <h2 id="expenseModalTitle">Add expense</h2>
+    <input type="hidden" id="expenseId" />
+    <label>Amount (₹)
+      <input type="number" id="expenseAmount" min="0.01" step="0.01" required />
+    </label>
+    <label>Category
+      <select id="expenseCategory" required>
+        <option>Food</option><option>Travel</option><option>Shopping</option>
+        <option>College</option><option>Entertainment</option><option>Bills</option>
+        <option>Health</option><option>Other</option>
+      </select>
+    </label>
+    <label>Date
+      <input type="date" id="expenseDate" required />
+    </label>
+    <label>Payment method
+      <select id="expensePaymentMethod" required>
+        <option>Cash</option><option>UPI</option><option>Card</option>
+        <option>Bank Transfer</option><option>Other</option>
+      </select>
+    </label>
+    <label>Description / notes
+      <input type="text" id="expenseDescription" placeholder="Optional" />
+    </label>
+    <p class="form-error" id="expenseFormError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-close="expenseModal">Cancel</button>
+      <button type="submit" class="btn-primary">Save expense</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ MODAL: ADD/EDIT INCOME ============ -->
+<dialog class="modal" id="incomeModal">
+  <form id="incomeForm" class="modal-form">
+    <h2 id="incomeModalTitle">Add income</h2>
+    <input type="hidden" id="incomeId" />
+    <label>Amount (₹)
+      <input type="number" id="incomeAmount" min="0.01" step="0.01" required />
+    </label>
+    <label>Source
+      <select id="incomeSource" required>
+        <option>Salary</option><option>Freelancing</option><option>Gift</option>
+        <option>Pocket money</option><option>Business</option><option>Other</option>
+      </select>
+    </label>
+    <label>Date
+      <input type="date" id="incomeDate" required />
+    </label>
+    <label>Notes
+      <input type="text" id="incomeNotes" placeholder="Optional" />
+    </label>
+    <p class="form-error" id="incomeFormError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-close="incomeModal">Cancel</button>
+      <button type="submit" class="btn-primary">Save income</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ MODAL: ADD/EDIT DEBT ============ -->
+<dialog class="modal" id="debtModal">
+  <form id="debtForm" class="modal-form">
+    <h2 id="debtModalTitle">Record money lent</h2>
+    <input type="hidden" id="debtId" />
+    <label>Person's name
+      <input type="text" id="debtPerson" required />
+    </label>
+    <label>Amount lent (₹)
+      <input type="number" id="debtAmount" min="0.01" step="0.01" required />
+    </label>
+    <label>Date lent
+      <input type="date" id="debtDateLent" required />
+    </label>
+    <label>Expected repayment date
+      <input type="date" id="debtDueDate" />
+    </label>
+    <label>Reason
+      <input type="text" id="debtReason" placeholder="e.g. College fees" />
+    </label>
+    <label>Payment method
+      <select id="debtPaymentMethod" required>
+        <option>Cash</option><option>UPI</option><option>Card</option>
+        <option>Bank Transfer</option><option>Other</option>
+      </select>
+    </label>
+    <label>Notes
+      <input type="text" id="debtNotes" placeholder="Optional" />
+    </label>
+    <p class="form-error" id="debtFormError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-close="debtModal">Cancel</button>
+      <button type="submit" class="btn-primary">Save loan</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ MODAL: ADD REPAYMENT ============ -->
+<dialog class="modal" id="repaymentModal">
+  <form id="repaymentForm" class="modal-form">
+    <h2>Record repayment</h2>
+    <input type="hidden" id="repaymentDebtId" />
+    <p class="modal-context" id="repaymentContext"></p>
+    <label>Amount received (₹)
+      <input type="number" id="repaymentAmount" min="0.01" step="0.01" required />
+    </label>
+    <label>Date
+      <input type="date" id="repaymentDate" required />
+    </label>
+    <label>Payment method
+      <select id="repaymentPaymentMethod" required>
+        <option>Cash</option><option>UPI</option><option>Card</option>
+        <option>Bank Transfer</option><option>Other</option>
+      </select>
+    </label>
+    <label>Notes
+      <input type="text" id="repaymentNotes" placeholder="Optional" />
+    </label>
+    <p class="form-error" id="repaymentFormError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-close="repaymentModal">Cancel</button>
+      <button type="submit" class="btn-primary">Save repayment</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ CONFIRM DIALOG (delete / clear) ============ -->
+<dialog class="modal modal-small" id="confirmModal">
+  <div class="modal-form">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-close="confirmModal">Cancel</button>
+      <button type="button" class="btn-danger" id="confirmActionBtn">Confirm</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Mobile bottom nav -->
+<nav class="mobile-nav" id="mobileNav">
+  <button class="nav-item active" data-view="dashboard">Home</button>
+  <button class="nav-item" data-view="expenses">Expenses</button>
+  <button class="nav-item" data-view="people">People</button>
+  <button class="nav-item" data-view="transactions">History</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
